@@ -14,18 +14,16 @@ import java.util.Arrays;
 @Component
 public class OpenAIClient {
 
-    private final String apiKey;
     private final OpenAiService service;
 
     public OpenAIClient(@Value("${app.openai.api.key}") String apiKey) {
-        this.apiKey = apiKey;
         this.service = new OpenAiService(apiKey, Duration.ofSeconds(60));
     }
 
     public String enviarRequisicaoChatCompletion(DadosRequisicaoChatCompletion dados) {
         var request = ChatCompletionRequest
                 .builder()
-                .model("gpt-4-1106-preview")
+                .model("gpt-3.5-turbo-16k")
                 .messages(Arrays.asList(
                         new ChatMessage(
                                 ChatMessageRole.SYSTEM.value(),
@@ -60,5 +58,4 @@ public class OpenAIClient {
         }
         throw new RuntimeException("API Fora do ar! Tentativas finalizadas sem sucesso!");
     }
-
 }
