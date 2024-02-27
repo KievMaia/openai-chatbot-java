@@ -98,6 +98,7 @@ body {
 .chat__bolha--usuario {
     border: 1px solid #5385C3;
     align-self: flex-end;
+    background-color: #5385C3;
 }
 
 .chat__bolha--usuario::after {
