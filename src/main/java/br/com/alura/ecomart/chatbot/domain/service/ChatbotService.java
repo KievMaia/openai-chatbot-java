@@ -3,7 +3,6 @@ package br.com.alura.ecomart.chatbot.domain.service;
 import br.com.alura.ecomart.chatbot.infra.openai.DadosRequisicaoChatCompletion;
 import br.com.alura.ecomart.chatbot.infra.openai.OpenAIClient;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
