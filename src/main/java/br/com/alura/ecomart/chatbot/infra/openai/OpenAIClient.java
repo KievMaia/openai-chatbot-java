@@ -47,7 +47,7 @@ public class OpenAIClient {
                     case 401 -> throw new RuntimeException("Erro com a chave da API!", ex);
                     case 429, 500, 503 -> {
                         try {
-                            Thread.sleep(1000 * segundosParaProximaTentiva);
+                            Thread.sleep(1000L * segundosParaProximaTentiva);
                             segundosParaProximaTentiva *= 2;
                         } catch (InterruptedException e) {
                             throw new RuntimeException(e);
