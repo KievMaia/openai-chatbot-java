@@ -2,8 +2,11 @@ package br.com.alura.ecomart.chatbot.web.controller;
 
 import br.com.alura.ecomart.chatbot.domain.service.ChatbotService;
 import br.com.alura.ecomart.chatbot.web.dto.PerguntaDto;
+import com.theokanning.openai.completion.chat.ChatCompletionChunk;
+import io.reactivex.Flowable;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
 
 @Controller
 @RequestMapping({"/", "chat"})
@@ -22,7 +25,7 @@ public class ChatController {
 
     @PostMapping
     @ResponseBody
-    public String responderPergunta(@RequestBody PerguntaDto dto) {
+    public ResponseBodyEmitter responderPergunta(@RequestBody PerguntaDto dto) {
         return service.responderPergunta(dto.pergunta());
     }
 
@@ -30,5 +33,4 @@ public class ChatController {
     public String limparConversa() {
         return PAGINA_CHAT;
     }
-
 }
