@@ -13,7 +13,6 @@ body {
 
 .container {
     padding: 0 2rem;
-    background-color: #FFFFFF;
 }
 
 @media screen and (min-width: 1400px) {
@@ -24,11 +23,10 @@ body {
 
 .cabecalho {
     display: flex;
-    justify-content: space-around;
+    justify-content: space-between;
     align-items: center;
     height: 5rem;
     border-bottom: 1px solid #1C5296;
-    background-color: #779eff;
 }
 
 .cabecalho__acoes {
@@ -48,7 +46,6 @@ body {
     flex-direction: column;
     justify-content: flex-end;
     flex-grow: 1;
-    background-color: #FFFFFF;
 }
 
 .chat {
@@ -72,11 +69,10 @@ body {
     font-size: 1.375rem;
     margin: 1.5rem 0;
     position: relative;
-
 }
 
 .chat__bolha--bot {
-    background-color: #467CFF;
+    background-color: #5385C3;
 }
 
 .chat__bolha--bot::before {
@@ -98,7 +94,6 @@ body {
 .chat__bolha--usuario {
     border: 1px solid #5385C3;
     align-self: flex-end;
-    background-color: #5385C3;
 }
 
 .chat__bolha--usuario::after {
@@ -135,7 +130,7 @@ body {
 
     padding: 0 0.5rem;
 
-    background-color: #779eff;
+    background-color: #1C5296;
     border: 1px solid #0C305C;
     border-radius: 4rem;
 }
