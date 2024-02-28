@@ -24,11 +24,11 @@ body {
 
 .cabecalho {
     display: flex;
-    justify-content: space-between;
+    justify-content: space-around;
     align-items: center;
     height: 5rem;
     border-bottom: 1px solid #1C5296;
-    background-color: #89b0df;
+    background-color: #779eff;
 }
 
 .cabecalho__acoes {
@@ -76,7 +76,7 @@ body {
 }
 
 .chat__bolha--bot {
-    background-color: #5385C3;
+    background-color: #467CFF;
 }
 
 .chat__bolha--bot::before {
@@ -90,7 +90,7 @@ body {
     top: 0;
     left: calc(-2.5rem - 1rem);
 
-    background-image: url(../img/icone-chatbot.svg);
+    background-image: url(../img/prolog_logo_30x30.png);
     background-repeat: no-repeat;
     background-position: center;
 }
@@ -135,7 +135,7 @@ body {
 
     padding: 0 0.5rem;
 
-    background-color: #1C5296;
+    background-color: #779eff;
     border: 1px solid #0C305C;
     border-radius: 4rem;
 }
