@@ -5,8 +5,11 @@ import br.com.alura.ecomart.chatbot.web.dto.PerguntaDto;
 import com.theokanning.openai.completion.chat.ChatCompletionChunk;
 import io.reactivex.Flowable;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter;
+
+import java.util.List;
 
 @Controller
 @RequestMapping({"/", "chat"})
@@ -19,18 +22,21 @@ public class ChatController {
     public ChatController(ChatbotService service) {this.service = service;}
 
     @GetMapping
-    public String carregarPaginaChatbot() {
+    public String carregarPaginaChatbot(Model model) {
+        final var messages = service.carregarHistorico();
+        model.addAttribute("historico", messages);
         return PAGINA_CHAT;
     }
 
     @PostMapping
     @ResponseBody
-    public ResponseBodyEmitter responderPergunta(@RequestBody PerguntaDto dto) {
+    public String responderPergunta(@RequestBody PerguntaDto dto) {
         return service.responderPergunta(dto.pergunta());
     }
 
     @GetMapping("limpar")
     public String limparConversa() {
-        return PAGINA_CHAT;
+        service.limparHistorico();
+        return "redirect:/chat";
     }
 }

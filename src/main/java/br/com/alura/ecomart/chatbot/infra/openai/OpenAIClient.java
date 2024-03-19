@@ -1,61 +1,158 @@
 package br.com.alura.ecomart.chatbot.infra.openai;
 
+import br.com.alura.ecomart.chatbot.domain.DadosCalculoFrete;
+import br.com.alura.ecomart.chatbot.domain.service.CalculadorDeFrete;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.theokanning.openai.OpenAiHttpException;
-import com.theokanning.openai.completion.chat.ChatCompletionChunk;
-import com.theokanning.openai.completion.chat.ChatCompletionRequest;
-import com.theokanning.openai.completion.chat.ChatMessage;
-import com.theokanning.openai.completion.chat.ChatMessageRole;
+import com.theokanning.openai.OpenAiResponse;
+import com.theokanning.openai.completion.chat.*;
+import com.theokanning.openai.messages.Message;
+import com.theokanning.openai.messages.MessageRequest;
+import com.theokanning.openai.runs.Run;
+import com.theokanning.openai.runs.RunCreateRequest;
+import com.theokanning.openai.runs.SubmitToolOutputRequestItem;
+import com.theokanning.openai.runs.SubmitToolOutputsRequest;
+import com.theokanning.openai.service.FunctionExecutor;
 import com.theokanning.openai.service.OpenAiService;
+import com.theokanning.openai.threads.ThreadRequest;
 import io.reactivex.Flowable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.util.Arrays;
+import java.util.*;
 
 @Component
 public class OpenAIClient {
 
+    private final String assistantId;
+    private String threadId;
     private final OpenAiService service;
 
-    public OpenAIClient(@Value("${app.openai.api.key}") String apiKey) {
+    private final CalculadorDeFrete calculadorDeFrete;
+
+    public OpenAIClient(final @Value("${app.openai.api.key}") String apiKey,
+                        final @Value("${app.openai.assistant.id}") String assistantId,
+                        final CalculadorDeFrete calculadorDeFrete) {
         this.service = new OpenAiService(apiKey, Duration.ofSeconds(60));
+        this.assistantId = assistantId;
+        this.calculadorDeFrete = calculadorDeFrete;
     }
 
-    public Flowable<ChatCompletionChunk> enviarRequisicaoChatCompletion(DadosRequisicaoChatCompletion dados) {
-        var request = ChatCompletionRequest
+    public String enviarRequisicaoChatCompletion(DadosRequisicaoChatCompletion dados) {
+        var messageRequest = MessageRequest
                 .builder()
-                .model("gpt-3.5-turbo-16k")
-                .messages(Arrays.asList(
-                        new ChatMessage(
-                                ChatMessageRole.SYSTEM.value(),
-                                dados.promptSistema()),
-                        new ChatMessage(
-                                ChatMessageRole.USER.value(),
-                                dados.promptUsuario())))
-                .stream(true)
+                .role(ChatMessageRole.USER.value())
+                .content(dados.promptUsuario())
                 .build();
 
-        var segundosParaProximaTentiva = 5;
-        var tentativas = 0;
-        while (tentativas++ != 5) {
+        if (this.threadId == null) {
+            var threadRequest = ThreadRequest
+                    .builder()
+                    .messages(Collections.singletonList(messageRequest))
+                    .build();
+
+            var thread = service.createThread(threadRequest);
+            this.threadId = thread.getId();
+        } else {
+            service.createMessage(this.threadId, messageRequest);
+        }
+
+        var runRequest = RunCreateRequest
+                .builder()
+                .assistantId(assistantId)
+                .build();
+        var run = service.createRun(threadId, runRequest);
+
+        var concluido = false;
+        var precisaChamarFuncao = false;
+        try {
+            while (!concluido && !precisaChamarFuncao) {
+                Thread.sleep(1000 * 10);
+                run = service.retrieveRun(threadId, run.getId());
+                concluido = run.getStatus().equalsIgnoreCase("completed");
+                precisaChamarFuncao = run.getRequiredAction() != null;
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        if (precisaChamarFuncao) {
+            var precoDoFrete = this.chamarFuncao(run);
+            var submitRequest = SubmitToolOutputsRequest
+                    .builder()
+                    .toolOutputs(List.of(
+                            new SubmitToolOutputRequestItem(
+                                    run
+                                            .getRequiredAction()
+                                            .getSubmitToolOutputs()
+                                            .getToolCalls()
+                                            .get(0)
+                                            .getId(),
+                                    precoDoFrete)
+                    ))
+                    .build();
+            service.submitToolOutputs(threadId, run.getId(), submitRequest);
+
             try {
-                return service.streamChatCompletion(request);
-            } catch (OpenAiHttpException ex) {
-                var errorCode = ex.statusCode;
-                switch (errorCode) {
-                    case 401 -> throw new RuntimeException("Erro com a chave da API!", ex);
-                    case 429, 500, 503 -> {
-                        try {
-                            Thread.sleep(1000L * segundosParaProximaTentiva);
-                            segundosParaProximaTentiva *= 2;
-                        } catch (InterruptedException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
+                while (!concluido) {
+                    Thread.sleep(1000 * 10);
+                    run = service.retrieveRun(threadId, run.getId());
+                    concluido = run.getStatus().equalsIgnoreCase("completed");
                 }
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
         }
-        throw new RuntimeException("API Fora do ar! Tentativas finalizadas sem sucesso!");
+
+        var mensagens = service.listMessages(threadId);
+        return mensagens
+                .getData()
+                .stream()
+                .max(Comparator.comparingInt(Message::getCreatedAt))
+                .get()
+                .getContent()
+                .get(0)
+                .getText()
+                .getValue()
+                .replaceAll("【.*?】", "");
+    }
+
+    public List<String> carregarHistoricoDeMensagens() {
+        var mensagens = new ArrayList<String>();
+
+        if (threadId != null) {
+            mensagens.addAll(service.listMessages(this.threadId)
+                                     .getData()
+                                     .stream()
+                                     .sorted(Comparator.comparingInt(Message::getCreatedAt))
+                                     .map(m -> m.getContent().get(0).getText().getValue())
+                                     .toList());
+        }
+        return mensagens;
+    }
+
+    public void apagarThread() {
+        if (this.threadId != null) {
+            service.deleteThread(threadId);
+            this.threadId = null;
+        }
+    }
+
+    private String chamarFuncao(Run run) {
+        try {
+            var funcao = run.getRequiredAction().getSubmitToolOutputs().getToolCalls().get(0).getFunction();
+            var funcaoCalcularFrete = ChatFunction.builder()
+                    .name("calcularFrete")
+                    .executor(DadosCalculoFrete.class, calculadorDeFrete::calcular)
+                    .build();
+
+            var executorDeFuncoes = new FunctionExecutor(Collections.singletonList(funcaoCalcularFrete));
+            var functionCall =
+                    new ChatFunctionCall(funcao.getName(), new ObjectMapper().readTree(funcao.getArguments()));
+            return executorDeFuncoes.execute(functionCall).toString();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
